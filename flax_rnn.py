@@ -1,8 +1,6 @@
 import jax
-from jax._src.interpreters.batching import batch
 import jax.numpy as jnp
 from jax import random
-import flax
 import flax.linen as nn
 from flax.training.train_state import TrainState
 import numpy as np
@@ -52,7 +50,7 @@ def update(lstm_state, x_batch, y_batch):
     return lstm_state, loss
 
 
-@partial(jax.jit, static_argnames=["x_range", "batch_size"])
+#@partial(jax.jit, static_argnames=["x_range", "batch_size"])
 def generate_batch(key: jnp.ndarray, x_range: float, batch_size: int):
     phase = random.randint(key, shape=(batch_size,), minval=0, maxval=x_range)
     # Get x_range for given phase
@@ -61,6 +59,9 @@ def generate_batch(key: jnp.ndarray, x_range: float, batch_size: int):
 
     x = jnp.expand_dims(gen_seq(phase), -1)
     y = jnp.expand_dims(gen_label(phase), -1)
+    # plt.plot( gen_seq(jnp.array([1])).flatten(), gen_label(jnp.array([1])).flatten() )
+    # plt.show()
+
     return x, y
 
 
@@ -75,7 +76,7 @@ def create_train_state(rng):
 
 
 # @partial(jax.jit, static_argnames=["x_range", "batch_size"])
-def train(lstm_state, key, x_range, batch_size):
+def train(lstm_state, key, x_range, batch_size, epochs):
     losses = []
     for epoch in range(epochs):
         rng, key = random.split(key)
@@ -87,9 +88,10 @@ def train(lstm_state, key, x_range, batch_size):
         if epoch % 1000 == 0:
             print(epoch, np.mean(losses[:-1000]))
             # print(losses)
-    return lstm_state
     # plt.plot(losses)
     # plt.show()
+    return lstm_state
+
 
 def test(lstm_state, key, x_range, batch_size):
     x_test, y_test = generate_batch(key, x_range, batch_size)
@@ -109,30 +111,11 @@ rng = random.PRNGKey(0)
 batch_size = 64
 time_window = 20
 x_range = 2*jnp.pi
-epochs = 15_000
+epochs = 10_000
 
 rng, key = random.split(rng)
 
 lstm_state = create_train_state(key)
-lstm_state = train(lstm_state, key, x_range, batch_size)
+lstm_state = train(lstm_state, key, x_range, batch_size, epochs)
 rng, key = random.split(rng)
 test(lstm_state, key, x_range, batch_size)  # Make me :)
-
-# Run inference, test how well it does at predicting the next bits of a sin wave
-## TODO
-
-
-# uncomment to see a phase
-# plt.plot( gen_seq(jnp.array([1])).flatten(), gen_label(jnp.array([1])).flatten() )
-# plt.show()
-# print(phase.shape)
-# print(y.shape)
-# print(x.shape)
-#
-# x: (64, 20, 1)
-# module = LSTM(features=64)
-# y, variables = module.init_with_output(rng, x)
-#
-# print(f"y: {y}")
-# print(f"variables: {variables}")
-#
